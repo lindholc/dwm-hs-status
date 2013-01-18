@@ -1,45 +1,84 @@
-{-# LANGUAGE TemplateHaskell #-}
-
 import Control.Applicative
 import Control.Concurrent
 import Control.Concurrent.STM
-import Control.Lens
-import Control.Monad (forever, sequence)
+import Control.Exception
+import Control.Monad (forever, void, guard)
 import Data.Time
 import System.Cmd
 import System.Locale
+import System.IO.Error
 
-data Status = Status {_sTime :: String}
+-- Number of microseconds before status bar is refreshed.
+{-
+statusDelayLength :: Double
+statusDelayLength = 1000000
+-}
 
-instance Show Status where
-  show (Status t) = show t
+-- Frequency, action
+-- The action will be wrapped so that it occurs in a new thread at the
+-- given frequency and that the result is kept in STM-land.
+-- TODO: Replace string w/ Text
+-- TODO: Record syntax?
+{-
+data Task = Task Double (IO String)
 
--- How does Template Haskell work?
-makeLenses ''Status
+tasks :: [Task]
+tasks = [Task 1 getTime]
+-}
 
--- TODO: Any way to do this automatically?
-emptyStatus :: Status
-emptyStatus = Status ""
-
--- TODO: Need to run as soon as the program starts, then wait for the next
--- time. Don't want to start by waiting.
 main :: IO ()
 main = do
-  statusTVar <- atomically $ newTVar (Status "")
-  forever $ do
-    timeThread <- forkIO $ do
-      -- These lines can be combined w/ an applicative functor or
-      -- something like that.
+  timeTVar <- atomically $ newTVar ""
+  batTVar <- atomically $ newTVar ""
+  forkIO $
+    forever $ do
       time <- getTime
-      atomically $ modifyTVar' statusTVar $ (\x -> x & sTime .~ time)
-    status <- atomically $ readTVar statusTVar
-    putStatus $ show status
+      atomically $ writeTVar timeTVar time
+      threadDelay 1000000
+  forkIO $
+    forever $ do
+      batStatus <- getBatStatus
+      batCapacity <- getBatCapacity
+      atomically $
+        writeTVar batTVar $ formatBatStr batStatus batCapacity
+      threadDelay 10000000
+  forever $ do
+    t <- readTVarIO timeTVar
+    b <- readTVarIO batTVar
+    putStatus $ b ++ " " ++ t
+    threadDelay 1000000
 
 putStatus :: String -> IO ()
-putStatus status = rawSystem "xsetroot" ["-name", status] >> return ()
+putStatus status = void $ rawSystem "xsetroot" ["-name", status]
 
 -- TODO: Where should the formatting be done?
 getTime :: IO String
 getTime = formatT <$> getZonedTime
   where
     formatT = formatTime defaultTimeLocale "%T"
+
+-- TODO: Instead of checking every so often, this could be informed
+-- by ACPI events.
+getBatStatus :: IO String
+getBatStatus = do
+  let file = "/sys/class/power_supply/BAT0/status"
+  e <- tryJust (guard . isDoesNotExistError) (readFile file)
+  case either (const "") strip e of
+    "Full"        -> return "(=)"
+    "Charging"    -> return "(+)"
+    "Discharging" -> return "(-)"
+    _             -> return "(?)"
+
+-- TODO: Instead of checking every so often, this could be informed
+-- by ACPI events.
+getBatCapacity :: IO String
+getBatCapacity = do
+  let file = "/sys/class/power_supply/BAT0/capacity"
+  e <- tryJust (guard . isDoesNotExistError) (readFile file)
+  return $ either (const "") (\x -> strip x ++ "%") e
+
+formatBatStr :: String -> String -> String
+formatBatStr s c = c ++ " " ++ s
+
+strip :: String -> String
+strip = filter (/= '\n')
