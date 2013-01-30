@@ -2,56 +2,66 @@ import Control.Applicative
 import Control.Concurrent
 import Control.Concurrent.STM
 import Control.Exception
-import Control.Monad (forever, void, guard)
+import Control.Monad (forever, void, guard, liftM)
 import Data.Time
 import System.Cmd
 import System.Locale
 import System.IO.Error
 
--- Number of microseconds before status bar is refreshed.
-{-
-statusDelayLength :: Double
-statusDelayLength = 1000000
--}
+data StatusElement = Flag String
+                   | Sep String
+                   deriving (Eq)
 
--- Frequency, action
--- The action will be wrapped so that it occurs in a new thread at the
--- given frequency and that the result is kept in STM-land.
--- TODO: Replace string w/ Text
--- TODO: Record syntax?
-{-
-data Task = Task Double (IO String)
+-- TODO: Can the StatusElement be restrictied to Flag?
+data Action = Action StatusElement Int (IO String)
 
-tasks :: [Task]
-tasks = [Task 1 getTime]
--}
+space :: StatusElement
+space = Sep " "
 
+bar :: StatusElement
+bar = Sep " | "
+
+seconds :: Int -> Int
+seconds = (* 1000000)
+
+-- TODO: Do all the threads die when the main thread dies?
 main :: IO ()
 main = do
-  timeTVar <- atomically $ newTVar ""
-  batTVar <- atomically $ newTVar ""
-  forkIO $
-    forever $ do
-      time <- getTime
-      atomically $ writeTVar timeTVar time
-      threadDelay 1000000
-  forkIO $
-    forever $ do
-      batStatus <- getBatStatus
-      batCapacity <- getBatCapacity
-      atomically $
-        writeTVar batTVar $ formatBatStr batStatus batCapacity
-      threadDelay 10000000
+  m <- mapM startAction actions
   forever $ do
-    t <- readTVarIO timeTVar
-    b <- readTVarIO batTVar
-    putStatus $ b ++ " " ++ t
-    threadDelay 1000000
+    status <- makeStatus statusDef m
+    putStatus status
+    threadDelay (seconds 1)
+
+statusDef :: [StatusElement]
+statusDef = [Flag "batc", space, Flag "bats", bar, Flag "time"]
+
+actions :: [Action]
+actions = [ Action (Flag "time") (seconds 1) getTime
+          , Action (Flag "batc") (seconds 10) getBatCapacity
+          , Action (Flag "bats") (seconds 10) getBatStatus]
+
+startAction :: Action -> IO (StatusElement, TVar String)
+startAction (Action f t a) = do
+  tvar <- atomically $ newTVar ""
+  forkIO $
+    forever $ do
+      val <- a
+      atomically $ writeTVar tvar val
+      threadDelay t
+  return (f, tvar)
+
+-- TODO: Could I use concatMap instead of map?
+makeStatus :: [StatusElement] -> [(StatusElement, TVar String)] -> IO String
+makeStatus s m = liftM concat $ mapM makeStatus' s
+  where
+    makeStatus' :: StatusElement -> IO String
+    makeStatus' (Sep t) = return t
+    makeStatus' f = maybe (return "?") readTVarIO (lookup f m)
 
 putStatus :: String -> IO ()
 putStatus status = void $ rawSystem "xsetroot" ["-name", status]
 
--- TODO: Where should the formatting be done?
 getTime :: IO String
 getTime = formatT <$> getZonedTime
   where
@@ -76,9 +86,6 @@ getBatCapacity = do
   let file = "/sys/class/power_supply/BAT0/capacity"
   e <- tryJust (guard . isDoesNotExistError) (readFile file)
   return $ either (const "") (\x -> strip x ++ "%") e
-
-formatBatStr :: String -> String -> String
-formatBatStr s c = c ++ " " ++ s
 
 strip :: String -> String
 strip = filter (/= '\n')
