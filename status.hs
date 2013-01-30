@@ -1,12 +1,12 @@
 import Control.Applicative
 import Control.Concurrent
 import Control.Concurrent.STM
-import Control.Exception
-import Control.Monad (forever, void, guard, liftM)
-import Data.Time
+import Control.Monad (forever, void, liftM)
 import System.Cmd
-import System.Locale
-import System.IO.Error
+
+import Status.Battery
+import Status.Time
+import Status.Util
 
 data StatusElement = Flag String
                    | Sep String
@@ -20,9 +20,6 @@ space = Sep " "
 
 bar :: StatusElement
 bar = Sep " | "
-
-seconds :: Int -> Int
-seconds = (* 1000000)
 
 -- TODO: Do all the threads die when the main thread dies?
 main :: IO ()
@@ -62,30 +59,3 @@ makeStatus s m = liftM concat $ mapM makeStatus' s
 putStatus :: String -> IO ()
 putStatus status = void $ rawSystem "xsetroot" ["-name", status]
 
-getTime :: IO String
-getTime = formatT <$> getZonedTime
-  where
-    formatT = formatTime defaultTimeLocale "%T"
-
--- TODO: Instead of checking every so often, this could be informed
--- by ACPI events.
-getBatStatus :: IO String
-getBatStatus = do
-  let file = "/sys/class/power_supply/BAT0/status"
-  e <- tryJust (guard . isDoesNotExistError) (readFile file)
-  case either (const "") strip e of
-    "Full"        -> return "(=)"
-    "Charging"    -> return "(+)"
-    "Discharging" -> return "(-)"
-    _             -> return "(?)"
-
--- TODO: Instead of checking every so often, this could be informed
--- by ACPI events.
-getBatCapacity :: IO String
-getBatCapacity = do
-  let file = "/sys/class/power_supply/BAT0/capacity"
-  e <- tryJust (guard . isDoesNotExistError) (readFile file)
-  return $ either (const "") (\x -> strip x ++ "%") e
-
-strip :: String -> String
-strip = filter (/= '\n')
