@@ -6,20 +6,9 @@ import System.Cmd
 
 import Status.Battery
 import Status.Time
+import Status.Type.Action
+import Status.Type.StatusElement
 import Status.Util
-
-data StatusElement = Flag String
-                   | Sep String
-                   deriving (Eq)
-
--- TODO: Can the StatusElement be restrictied to Flag?
-data Action = Action StatusElement Int (IO String)
-
-space :: StatusElement
-space = Sep " "
-
-bar :: StatusElement
-bar = Sep " | "
 
 -- TODO: Do all the threads die when the main thread dies?
 main :: IO ()
@@ -48,7 +37,6 @@ startAction (Action f t a) = do
       threadDelay t
   return (f, tvar)
 
--- TODO: Could I use concatMap instead of map?
 makeStatus :: [StatusElement] -> [(StatusElement, TVar String)] -> IO String
 makeStatus s m = liftM concat $ mapM makeStatus' s
   where
@@ -58,4 +46,3 @@ makeStatus s m = liftM concat $ mapM makeStatus' s
 
 putStatus :: String -> IO ()
 putStatus status = void $ rawSystem "xsetroot" ["-name", status]
-
