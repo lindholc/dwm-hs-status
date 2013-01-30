@@ -1,56 +1,61 @@
-import Control.Monad (forever, sequence)
-import Data.ByteString.Char8 (unpack)
-import Data.Conduit
-import Data.Conduit.Binary (sourceFile, lines)
-import Data.Conduit.List (consume)
-import Data.Time
-import Prelude hiding (lines)
+import Control.Applicative
+import Control.Concurrent
+import Control.Concurrent.STM
+import Control.Monad (forever, void, liftM)
 import System.Cmd
-import System.Locale
-import System.Timer.Updatable
 
--- What if this was done by lazily constructing a string for the status
--- using the functions that get the data? That way, you can do all the
--- formatting easily, and then each time it tries to make the string, it
--- calls the functions and get the updated values.
+import Status.Battery
+import Status.Time
+import Status.Util
 
--- TODO: Need to run as soon as the program starts, then wait for the next
--- time. Don't want to start by waiting.
+data StatusElement = Flag String
+                   | Sep String
+                   deriving (Eq)
+
+-- TODO: Can the StatusElement be restrictied to Flag?
+data Action = Action StatusElement Int (IO String)
+
+space :: StatusElement
+space = Sep " "
+
+bar :: StatusElement
+bar = Sep " | "
+
+-- TODO: Do all the threads die when the main thread dies?
 main :: IO ()
-main = forever $ serial (sequence thingsToDo >>= (\s ->
-  rawSystem "xsetroot" ["-name", unwords s])) (10^6) >>=
-    (\t -> waitIO t) >> return ()
+main = do
+  m <- mapM startAction actions
+  forever $ do
+    status <- makeStatus statusDef m
+    putStatus status
+    threadDelay (seconds 1)
 
--- All the things used to construct the string will most likely
--- be in the IO monad.
-thingsToDo :: [IO String]
-thingsToDo = [getBattery, getBatteryStatus, getTime]
+statusDef :: [StatusElement]
+statusDef = [Flag "batc", space, Flag "bats", bar, Flag "time"]
 
--- TODO: Could this be done more idiomatically? (lift or something?)
--- TODO: Format so the time is only hours and minutes.
-getTime :: IO String
-getTime = getZonedTime >>=
-  (\t -> return $ formatTime defaultTimeLocale "%T" t)
+actions :: [Action]
+actions = [ Action (Flag "time") (seconds 1) getTime
+          , Action (Flag "batc") (seconds 10) getBatCapacity
+          , Action (Flag "bats") (seconds 10) getBatStatus]
 
--- TODO: How do I deal with ByteStrings?
-getBattery :: IO String
-getBattery = (runResourceT $ sourceFile battFile $= lines $$ consume) >>=
-  (\t -> return $ (unpack $ t !! 0) ++ "%")
-    where
-      battFile = "/sys/class/power_supply/BAT0/capacity"
+startAction :: Action -> IO (StatusElement, TVar String)
+startAction (Action f t a) = do
+  tvar <- atomically $ newTVar ""
+  forkIO $
+    forever $ do
+      val <- a
+      atomically $ writeTVar tvar val
+      threadDelay t
+  return (f, tvar)
 
--- TODO: Need to find out how to do this.
-{-
-getBatteryTime :: IO String
-getBatteryTime = undefined
--}
+-- TODO: Could I use concatMap instead of map?
+makeStatus :: [StatusElement] -> [(StatusElement, TVar String)] -> IO String
+makeStatus s m = liftM concat $ mapM makeStatus' s
+  where
+    makeStatus' :: StatusElement -> IO String
+    makeStatus' (Sep t) = return t
+    makeStatus' f = maybe (return "?") readTVarIO (lookup f m)
 
-getBatteryStatus :: IO String
-getBatteryStatus = (runResourceT $ sourceFile battFile $= lines $$ consume) >>=
-  (\t -> case (unpack $ t !! 0) of
-    "Full"     -> return "(=)"
-    "Charging" -> return "(+)"
-    _          -> return "(-)"
-  )
-    where
-      battFile = "/sys/class/power_supply/BAT0/status"
+putStatus :: String -> IO ()
+putStatus status = void $ rawSystem "xsetroot" ["-name", status]
+
