@@ -1,4 +1,5 @@
-import Control.Applicative
+{-# LANGUAGE BangPatterns #-}
+
 import Control.Concurrent
 import Control.Concurrent.STM
 import Control.Monad (forever, void, liftM)
@@ -10,7 +11,6 @@ import Status.Type.Action
 import Status.Type.StatusElement
 import Status.Util
 
--- TODO: Do all the threads die when the main thread dies?
 main :: IO ()
 main = do
   m <- mapM startAction actions
@@ -32,7 +32,8 @@ startAction (Action f t a) = do
   tvar <- atomically $ newTVar ""
   forkIO $
     forever $ do
-      val <- a
+      -- TODO: Is it useful to make this strict?
+      !val <- a
       atomically $ writeTVar tvar val
       threadDelay t
   return (f, tvar)
