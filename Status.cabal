@@ -1,0 +1,15 @@
+Name:            dwm-status
+Version:         0.1
+Author:          Chris Lindholm
+Cabal-Version:   >= 1.2
+Build-Type:      Simple
+
+Executable status
+  Main-is:       Main.hs
+  Build-Depends:
+    base >= 3 && < 5,
+    old-locale,
+    time,
+    process,
+    stm
+  GHC-Options:   -O2
