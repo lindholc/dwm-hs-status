@@ -21,13 +21,15 @@ main = do
     threadDelay (seconds 1)
 
 statusDef :: [StatusElement]
-statusDef = [Flag "wfs", bar, Flag "batc", space, Flag "bats", bar, Flag "time"]
+statusDef = [Flag "essid", space, Flag "wfs", bar, Flag "batc", space
+             , Flag "bats", bar, Flag "time"]
 
 actions :: [Action]
-actions = [ Action (Flag "time") (seconds 1)  getTime
-          , Action (Flag "batc") (seconds 10) getBatCapacity
-          , Action (Flag "bats") (seconds 10) getBatStatus
-          , Action (Flag "wfs")  (seconds 10) getStrength ]
+actions = [ Action (Flag "time")  (seconds 1)  getTime
+          , Action (Flag "batc")  (seconds 10) getBatCapacity
+          , Action (Flag "bats")  (seconds 10) getBatStatus
+          , Action (Flag "wfs")   (seconds 10) getStrength 
+          , Action (Flag "essid") (seconds 10) getESSID]
 
 startAction :: Action -> IO (StatusElement, TVar String)
 startAction (Action f t a) = do
