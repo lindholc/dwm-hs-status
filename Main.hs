@@ -10,6 +10,7 @@ import Status.Time
 import Status.Type.Action
 import Status.Type.StatusElement
 import Status.Util
+import Status.Wireless
 
 main :: IO ()
 main = do
@@ -20,12 +21,13 @@ main = do
     threadDelay (seconds 1)
 
 statusDef :: [StatusElement]
-statusDef = [Flag "batc", space, Flag "bats", bar, Flag "time"]
+statusDef = [Flag "wfs", bar, Flag "batc", space, Flag "bats", bar, Flag "time"]
 
 actions :: [Action]
-actions = [ Action (Flag "time") (seconds 1) getTime
+actions = [ Action (Flag "time") (seconds 1)  getTime
           , Action (Flag "batc") (seconds 10) getBatCapacity
-          , Action (Flag "bats") (seconds 10) getBatStatus]
+          , Action (Flag "bats") (seconds 10) getBatStatus
+          , Action (Flag "wfs")  (seconds 10) getStrength ]
 
 startAction :: Action -> IO (StatusElement, TVar String)
 startAction (Action f t a) = do
