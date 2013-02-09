@@ -11,5 +11,6 @@ Executable status
     old-locale,
     time,
     process,
-    stm
+    stm,
+    parsec
   GHC-Options:   -O2
