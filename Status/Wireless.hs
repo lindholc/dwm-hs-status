@@ -24,4 +24,4 @@ signalParser = spaces >> string "Link Quality=" *> quality
 -- TODO: Type signature?
 essidParser = manyTill anyChar (try (string "ESSID:\"")) *> essid
   where
-    essid = manyTill alphaNum (try (string "\""))
+    essid = manyTill anyChar (try (string "\""))
