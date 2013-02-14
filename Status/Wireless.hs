@@ -7,7 +7,12 @@ import Text.Parsec
 
 getStrength :: IO String
 getStrength = getWirelessInfo >>= \x ->
-  return $! either (const "?") id (parse signalParser "" (x !! 5))
+  return $! either (const "?") id (parse signalParser "" (line x))
+  where
+    -- Not a big fan of this solution.
+    line :: [String] -> String
+    line l | length l < 6  = ""
+           | length l >= 6 = l !! 5
 
 getESSID :: IO String
 getESSID = getWirelessInfo >>= \x ->
