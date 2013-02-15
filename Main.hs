@@ -5,6 +5,7 @@ import Control.Concurrent.STM
 import Control.Monad (forever, void, liftM)
 import System.Cmd
 
+import Status.Audio
 import Status.Battery
 import Status.Time
 import Status.Type.Action
@@ -20,16 +21,21 @@ main = do
     putStatus status
     threadDelay (seconds 1)
 
+-- This would be cool:
+-- essid >s> wfs >|> batc >s> bats >|> time
 statusDef :: [StatusElement]
-statusDef = [Flag "essid", space, Flag "wfs", bar, Flag "batc", space
-             , Flag "bats", bar, Flag "time"]
+statusDef = [Flag "vol", space, Flag "mute", bar, Flag "essid", space
+            , Flag "wfs", bar, Flag "batc", space ,Flag "bats", bar
+            , Flag "time"]
 
 actions :: [Action]
 actions = [ Action (Flag "time")  (seconds 1)  getTime
           , Action (Flag "batc")  (seconds 10) getBatCapacity
           , Action (Flag "bats")  (seconds 10) getBatStatus
           , Action (Flag "wfs")   (seconds 10) getStrength 
-          , Action (Flag "essid") (seconds 10) getESSID]
+          , Action (Flag "essid") (seconds 10) getESSID
+          , Action (Flag "vol")   (seconds 3)  getVolLevel
+          , Action (Flag "mute")  (seconds 3)  getMuteStatus]
 
 startAction :: Action -> IO (StatusElement, TVar String)
 startAction (Action f t a) = do
