@@ -1,4 +1,4 @@
-module Status.Wireless (getStrength, getESSID) where
+module Status.Widget.Wireless (getStrength, getESSID) where
 
 import Control.Applicative
 import Control.Monad (liftM)

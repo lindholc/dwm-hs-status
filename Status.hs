@@ -1,10 +1,16 @@
 {-# LANGUAGE BangPatterns #-}
+module Status (startStatus) where
 
 import Control.Concurrent
 import Control.Concurrent.STM
 import Control.Monad (forever, void, liftM)
 import System.Cmd
 
+import Status.Type.Action
+import Status.Type.StatusElement
+import Status.Util
+
+{-
 import Status.Audio
 import Status.Battery
 import Status.Time
@@ -12,7 +18,9 @@ import Status.Type.Action
 import Status.Type.StatusElement
 import Status.Util
 import Status.Wireless
+-}
 
+{-
 main :: IO ()
 main = do
   m <- mapM startAction actions
@@ -36,6 +44,15 @@ actions = [ Action (Flag "time")  (seconds 1)  getTime
           , Action (Flag "essid") (seconds 10) getESSID
           , Action (Flag "vol")   (seconds 3)  getVolLevel
           , Action (Flag "mute")  (seconds 3)  getMuteStatus]
+-}
+
+startStatus :: [Action] -> [StatusElement] -> IO ()
+startStatus actions statusDef = do
+  m <- mapM startAction actions
+  forever $ do
+    status <- makeStatus statusDef m
+    putStatus status
+    threadDelay (seconds 1)
 
 startAction :: Action -> IO (StatusElement, TVar String)
 startAction (Action f t a) = do

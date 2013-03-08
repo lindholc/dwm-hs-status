@@ -1,4 +1,4 @@
-module Status.Audio (getMuteStatus, getVolLevel) where
+module Status.Widget.Audio (getMuteStatus, getVolLevel) where
 
 import Control.Applicative hiding (many)
 import Control.Monad (liftM)

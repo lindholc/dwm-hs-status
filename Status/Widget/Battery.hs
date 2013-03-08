@@ -1,4 +1,4 @@
-module Status.Battery (getBatStatus, getBatCapacity) where
+module Status.Widget.Battery (getBatStatus, getBatCapacity) where
 
 import Status.Util (strip)
 

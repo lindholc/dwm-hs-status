@@ -1,4 +1,4 @@
-module Status.Time (getTime) where
+module Status.Widget.Time (getTime) where
 
 import Control.Applicative
 import Data.Time
