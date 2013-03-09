@@ -13,18 +13,10 @@ import Status.Widget
 -- This would be cool:
 -- essid >s> wfs >|> batc >s> bats >|> time
 statusDef :: [StatusElement]
-statusDef = [Flag "vol", space, Flag "mute", bar, Flag "essid", space
-            , Flag "wfs", bar, Flag "batc", space ,Flag "bats", bar
-            , Flag "time"]
+statusDef = []
 
 actions :: [Action]
-actions = [ Action (Flag "time")  (seconds 1)  getTime
-          , Action (Flag "batc")  (seconds 10) getBatCapacity
-          , Action (Flag "bats")  (seconds 10) getBatStatus
-          , Action (Flag "wfs")   (seconds 10) getStrength 
-          , Action (Flag "essid") (seconds 10) getESSID
-          , Action (Flag "vol")   (seconds 3)  getVolLevel
-          , Action (Flag "mute")  (seconds 3)  getMuteStatus]
+actions = []
 
 main :: IO ()
 main = startStatus actions statusDef
