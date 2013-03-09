@@ -13,10 +13,10 @@ import Status.Widget
 -- This would be cool:
 -- essid >s> wfs >|> batc >s> bats >|> time
 statusDef :: [StatusElement]
-statusDef = []
+statusDef = [Flag "time"]
 
 actions :: [Action]
-actions = []
+actions = [ Action (Flag "time") (seconds 1) getTime ]
 
 main :: IO ()
 main = startStatus actions statusDef
