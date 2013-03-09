@@ -4,7 +4,8 @@ Author:          Chris Lindholm
 Cabal-Version:   >= 1.2
 Build-Type:      Simple
 
-Library
+Executable status
+  Main-Is: Main.hs
   Build-Depends:
     base >= 3 && < 5,
     old-locale,
@@ -12,7 +13,4 @@ Library
     process,
     stm,
     parsec
-  Exposed-Modules:
-    Status,
-    Status.Widget
   GHC-Options:   -O2
