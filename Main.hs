@@ -44,7 +44,7 @@ makeStatus :: [StatusElement] -> [(StatusElement, TVar String)] -> IO String
 makeStatus s m = liftM concat $ mapM makeStatus' s
   where
     makeStatus' :: StatusElement -> IO String
-    makeStatus' (Sep t) = return t
+    makeStatus' (Str s) = return s
     makeStatus' f = maybe (return "?") readTVarIO (lookup f m)
 
 putStatus :: String -> IO ()

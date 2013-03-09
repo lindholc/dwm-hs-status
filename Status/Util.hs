@@ -9,8 +9,8 @@ seconds :: Int -> Int
 seconds = (* 1000000)
 
 space :: StatusElement
-space = Sep " "
+space = Str " "
 
 bar :: StatusElement
-bar = Sep " | "
+bar = Str " | "
 
